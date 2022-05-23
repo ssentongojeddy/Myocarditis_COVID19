@@ -1,0 +1,308 @@
+---
+title: "Myocarditis: Meta-analysis"
+output: html_notebook
+---
+
+
+# LOAD REQUIRED PACKAGES AND FUNCTIONS -----------------------------------------
+```{r, message=FALSE}
+library(ggplot2) # pretty plots
+library(metafor) # for meta-analysis: mixed-effects logistic and Poisson regression models
+library(meta) # meta-regression, GLMM, forest plots,(subgroup) meta-analyses.
+```
+
+
+# read data -----------------------------------------
+```{r}
+rm(list=ls())
+dat=read.csv("myocarditis_vaccine_522.csv")
+dat$male=dat$male..total/5
+dat$Age=dat$Mean_Age/5
+dat$Interval=dat$Interval_day/7
+```
+
+
+# Demographics  -----------------------------------------
+
+```{r}
+summary(dat$male..total)
+summary(dat$Male_._myocarditis)
+summary(dat$Mean_Age)
+dat$hosp=(dat$hospitalization/dat$incidence)*100
+summary(dat$hosp)
+summary(dat$Interval_day)
+```
+
+
+
+# Meta-analysis using Maximum likehood UnAdjusted-----------------------------------------
+```{r}
+l1=is.na(dat$IRR_myocarditis)
+dat=dat[!l1,]
+
+dat$TE=log(dat$IRR_myocarditis)
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+dat$lower <- log(dat$IRR_LL)
+
+dat$upper <- log(dat$IRR_UL)
+
+dat$seTE <- (dat$upper - dat$lower)/3.92
+
+m <- metagen(TE,
+             seTE,
+             data=dat,
+            studlab=paste( Author, Year, Country,  sep = ", "),
+             comb.fixed = T,
+             comb.random = T,
+             hakn = F,
+             prediction=F,
+             sm="RR")
+
+m
+```
+
+
+# Male
+```{r }
+
+male=metareg(m, male)
+male
+round(exp(coef(summary(male))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+# Age
+```{r }
+age=metareg(m, Mean_Age)
+age
+round(exp(coef(summary(age))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+# Trend
+```{r }
+trend=metareg(m, Interval)
+trend
+round(exp(coef(summary(trend))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+
+# WHO
+```{r }
+who=metareg(m, WHO2)
+who
+round(exp(coef(summary(who))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+
+# Plot figure Fig 2
+
+```{r,fig.height=4, fig.width=4, echo=FALSE,warning=FALSE}
+
+mw<- update(m, byvar=Vaccine_Status,print.byvar=F)
+
+#pdf("figs/IRR.pdf", width = 10, height = 7)
+forest(mw,sortvar = TE,test.overall = FALSE, overall= F, overall.hetstat = F,
+       colgap.forest.left = "0.38 cm",print.byvar = F,
+       squaresize=0.5, col.square="blue",
+       col.diamond="maroon", col.diamond.lines="maroon",
+       col.by="black",leftcols=("studlab"),leftlabs = c("Study"),
+       rightlabs = c("RR","95% CI","Weight"), just = "center", just.addcols = "center",
+       print.zval = FALSE,text.fixed="Overall (Fixed-Effect Model)",text.random="Overall (Random-Effect Model)",comb.random = T,comb.fixed = F,  print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       test.overall.fixed=FALSE,test.overall.random = F)
+#dev.off()
+
+```
+
+# Plot figure Fig 4
+
+```{r,fig.height=4, fig.width=4, echo=FALSE,warning=FALSE}
+
+mw<- update(m, byvar=WHO,print.byvar=F)
+
+#pdf("figs/IRR.pdf", width = 10, height = 7)
+forest(mw,sortvar = TE,test.overall = FALSE, overall= F, overall.hetstat = F,
+       colgap.forest.left = "0.38 cm",print.byvar = F,
+       squaresize=0.5, col.square="blue",
+       col.diamond="maroon", col.diamond.lines="maroon",
+       col.by="black",leftcols=("studlab"),leftlabs = c("Study"),
+       rightlabs = c("RR","95% CI","Weight"), just = "center", just.addcols = "center",
+       print.zval = FALSE,text.fixed="Overall (Fixed-Effect Model)",text.random="Overall (Random-Effect Model)",comb.random = T,comb.fixed = F,  print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       test.overall.fixed=FALSE,test.overall.random = F)
+#dev.off()
+
+```
+
+
+
+
+
+
+```{r}
+
+metabias(m, method="rank")
+
+```
+
+
+
+
+
+
+# Meta-analysis using Maximum likehood UnAdjusted-----------------------------------------
+```{r}
+rm(list=ls())
+dat=read.csv("mrna.csv")
+dat$male=dat$male..total/5
+dat$Age=dat$Mean_Age/5
+dat$Interval=dat$Interval_day/7
+
+l1=is.na(dat$IRR_myocarditis)
+dat=dat[!l1,]
+
+dat$TE=log(dat$IRR_myocarditis)
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- log(dat$IRR_LL)
+
+dat$upper <- log(dat$IRR_UL)
+
+dat$seTE <- (dat$upper - dat$lower)/3.92
+
+m <- metagen(TE,
+             seTE,
+             data=dat,
+            studlab=paste( Author, Year, Country,  sep = ", "),
+             comb.fixed = T,
+             comb.random = T,
+             hakn = F,
+             prediction=F,
+             sm="RR")
+
+m
+```
+
+# Plot figure Fig 3
+
+```{r,fig.height=4, fig.width=4, echo=FALSE,warning=FALSE}
+
+mv<- update(m, byvar=dat$Vaccine,print.byvar=F)
+
+#pdf("figs/IRR.pdf", width = 10, height = 7)
+forest(mv,sortvar = TE,test.overall = FALSE, overall= F, overall.hetstat = F,
+       colgap.forest.left = "0.38 cm",print.byvar = F,
+       squaresize=0.5, col.square="blue",
+       col.diamond="maroon", col.diamond.lines="maroon",
+       col.by="black",leftcols=("studlab"),leftlabs = c("Study"),
+       rightlabs = c("RR","95% CI","Weight"), just = "center", just.addcols = "center",
+       print.zval = FALSE,text.fixed="Overall (Fixed-Effect Model)",text.random="Overall (Random-Effect Model)",comb.random = T,comb.fixed = F,  print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       test.overall.fixed=FALSE,test.overall.random = F)
+#dev.off()
+
+```
+
+
+
+
+# Funnel plots: -----------------------------------------
+```{r}
+
+#pdf("figs/FunnelPlotFinal.pdf", width = 10, height = 10)
+funnel(m,
+       level = 0.9, comb.random = T,backtransf = T)
+#dev.off()
+
+```
+
+
+```{r}
+tf2 <- trimfill(m)
+summary(tf2)
+#pdf("figs/Trimmed.pdf", width = 10, height = 10)
+funnel(tf2)
+#dev.off()
+funnel(tf2, pch = ifelse(tf2$trimfill, 1, 16),
+       level = 0.9, comb.random = T,backtransf = T)
+#
+```
+
+
+
+# Eggers and Begg test
+```{r}
+metabias(m, method="linreg",k.min=8)
+metabias(m, method="rank",k.min=8)
+
+```
+
+
+
+
+
+```{r}
+inf1=metainf(m, pooled = "random")
+summary(inf1)
+```
+
+
+
+
+```{r,fig.height=4, fig.width=4, echo=FALSE,warning=FALSE}
+#pdf("figs/IRR.pdf", width = 10, height = 7)
+forest(inf1,sortvar = TE,test.overall = FALSE, overall= F, overall.hetstat = F,
+       colgap.forest.left = "0.38 cm",print.byvar = F,
+       squaresize=0.5, col.square="blue",
+       col.diamond="maroon", col.diamond.lines="maroon",
+       col.by="black",leftcols=("studlab"),leftlabs = c("Study"),
+       rightlabs = c("RR","95% CI","Weight"), just = "center", just.addcols = "center",
+       print.zval = FALSE,text.fixed="Overall (Fixed-Effect Model)",text.random="Overall (Random-Effect Model)",comb.random = T,comb.fixed = F,  print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       test.overall.fixed=FALSE,test.overall.random = F)
+#dev.off()
+
+```
+
+
+# Male
+```{r }
+male=metareg(m, male)
+male
+round(exp(coef(summary(male))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+# Age
+```{r }
+age=metareg(m, Age)
+age
+round(exp(coef(summary(age))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+# Trend
+```{r }
+trend=metareg(m, Interval)
+trend
+round(exp(coef(summary(trend))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+# vaccines
+```{r }
+vaccines=metareg(m, Vaccine2)
+vaccines
+round(exp(coef(summary(vaccines))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+
+# WHO
+```{r }
+who=metareg(m, WHO2)
+who
+round(exp(coef(summary(who))[-1,c("estimate", "ci.lb", "ci.ub")]), 2)
+```
+
+
+
+
+
+
+
+
+
+
+
